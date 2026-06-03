@@ -5,9 +5,9 @@ local Stats = game:GetService("Stats")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage = game:GetService("ServerStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -19,79 +19,66 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
--- Main Frame (เลื่อนได้)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 420, 0, 560)
-mainFrame.Position = UDim2.new(0.5, -210, 0.5, -280)
+mainFrame.Size = UDim2.new(0, 430, 0, 570)
+mainFrame.Position = UDim2.new(0.5, -215, 0.5, -285)
 mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = mainFrame
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(0, 200, 255)
 stroke.Thickness = 1.5
 stroke.Parent = mainFrame
 
--- Title Bar (ใช้ drag)
+-- Title Bar
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 44)
-titleBar.BackgroundColor3 = Color3.fromRGB(0, 170, 220)
+titleBar.Size = UDim2.new(1, 0, 0, 46)
+titleBar.BackgroundColor3 = Color3.fromRGB(0, 140, 190)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 12)
-titleCorner.Parent = titleBar
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 12)
 
 -- ปิดมุมล่างของ titleBar
 local titleFix = Instance.new("Frame")
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
-titleFix.BackgroundColor3 = Color3.fromRGB(0, 170, 220)
+titleFix.BackgroundColor3 = Color3.fromRGB(0, 140, 190)
 titleFix.BorderSizePixel = 0
 titleFix.Parent = titleBar
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Text = "⬡ SERVER SCANNER"
-titleLabel.Size = UDim2.new(1, -50, 1, 0)
+titleLabel.Text = "⬡  SERVER SCANNER"
+titleLabel.Size = UDim2.new(1, -60, 1, 0)
 titleLabel.Position = UDim2.new(0, 14, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextSize = 16
+titleLabel.TextSize = 15
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = titleBar
 
--- Toggle Switch (เปิด/ปิดสแกน)
+-- Toggle Switch
 local toggleBg = Instance.new("Frame")
-toggleBg.Name = "ToggleBg"
 toggleBg.Size = UDim2.new(0, 50, 0, 26)
-toggleBg.Position = UDim2.new(1, -64, 0.5, -13)
+toggleBg.Position = UDim2.new(1, -62, 0.5, -13)
 toggleBg.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 toggleBg.BorderSizePixel = 0
 toggleBg.Parent = titleBar
-
-local toggleBgCorner = Instance.new("UICorner")
-toggleBgCorner.CornerRadius = UDim.new(1, 0)
-toggleBgCorner.Parent = toggleBg
+Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(1, 0)
 
 local toggleKnob = Instance.new("Frame")
-toggleKnob.Name = "Knob"
 toggleKnob.Size = UDim2.new(0, 20, 0, 20)
 toggleKnob.Position = UDim2.new(0, 3, 0.5, -10)
 toggleKnob.BackgroundColor3 = Color3.fromRGB(180, 180, 200)
 toggleKnob.BorderSizePixel = 0
 toggleKnob.Parent = toggleBg
-
-local knobCorner = Instance.new("UICorner")
-knobCorner.CornerRadius = UDim.new(1, 0)
-knobCorner.Parent = toggleKnob
+Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(1, 0)
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(1, 0, 1, 0)
@@ -102,24 +89,18 @@ toggleButton.Parent = toggleBg
 -- Progress Bar
 local progressBg = Instance.new("Frame")
 progressBg.Size = UDim2.new(1, -20, 0, 18)
-progressBg.Position = UDim2.new(0, 10, 0, 50)
+progressBg.Position = UDim2.new(0, 10, 0, 52)
 progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 progressBg.BorderSizePixel = 0
 progressBg.Parent = mainFrame
-
-local progressCorner = Instance.new("UICorner")
-progressCorner.CornerRadius = UDim.new(0, 9)
-progressCorner.Parent = progressBg
+Instance.new("UICorner", progressBg).CornerRadius = UDim.new(0, 9)
 
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
-
-local progressFillCorner = Instance.new("UICorner")
-progressFillCorner.CornerRadius = UDim.new(0, 9)
-progressFillCorner.Parent = progressFill
+Instance.new("UICorner", progressFill).CornerRadius = UDim.new(0, 9)
 
 local progressLabel = Instance.new("TextLabel")
 progressLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -133,7 +114,7 @@ progressLabel.Parent = progressBg
 -- Status Label
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -20, 0, 18)
-statusLabel.Position = UDim2.new(0, 10, 0, 72)
+statusLabel.Position = UDim2.new(0, 10, 0, 74)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text = "รอการสแกน..."
 statusLabel.TextColor3 = Color3.fromRGB(120, 200, 255)
@@ -142,20 +123,17 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = mainFrame
 
--- ScrollFrame สำหรับผลลัพธ์
+-- ScrollFrame
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -16, 1, -100)
-scrollFrame.Position = UDim2.new(0, 8, 0, 96)
+scrollFrame.Size = UDim2.new(1, -16, 1, -102)
+scrollFrame.Position = UDim2.new(0, 8, 0, 98)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 24)
 scrollFrame.BorderSizePixel = 0
 scrollFrame.ScrollBarThickness = 4
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 255)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
-
-local scrollCorner = Instance.new("UICorner")
-scrollCorner.CornerRadius = UDim.new(0, 8)
-scrollCorner.Parent = scrollFrame
+Instance.new("UICorner", scrollFrame).CornerRadius = UDim.new(0, 8)
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -168,329 +146,128 @@ listPad.PaddingRight = UDim.new(0, 6)
 listPad.PaddingTop = UDim.new(0, 6)
 listPad.Parent = scrollFrame
 
--- ===== Drag Logic (เลื่อนหน้าต่าง) =====
-local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+-- ===== Drag Logic =====
+local dragging, dragStart, startPos = false, nil, nil
 
 titleBar.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
-	end
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
 end)
 
 titleBar.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
 end)
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
-		local newPos = UDim2.new(
-			startPos.X.Scale, startPos.X.Offset + delta.X * 0.6,
-			startPos.Y.Scale, startPos.Y.Offset + delta.Y * 0.6
-		)
-		local tween = TweenService:Create(mainFrame, TweenInfo.new(0.08, Enum.EasingStyle.Linear), {Position = newPos})
-		tween:Play()
-	end
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
 end)
 
--- ===== สร้าง Row ผลลัพธ์ =====
+-- ===== Badge Colors ตาม Category =====
+local badgeColors = {
+    SERVER      = Color3.fromRGB(0, 100, 180),
+    PLAYERS     = Color3.fromRGB(140, 60, 180),
+    PLAYER      = Color3.fromRGB(100, 40, 160),
+    WORKSPACE   = Color3.fromRGB(0, 130, 100),
+    LIGHTING    = Color3.fromRGB(180, 130, 0),
+    PERF        = Color3.fromRGB(180, 60, 0),
+    REPLICATED  = Color3.fromRGB(0, 120, 160),
+    SOUND       = Color3.fromRGB(120, 0, 160),
+    STARTERGUI  = Color3.fromRGB(0, 140, 80),
+    STARTERPACK = Color3.fromRGB(0, 110, 60),
+    LOCALPLAYER = Color3.fromRGB(160, 80, 0),
+    CHARACTER   = Color3.fromRGB(140, 50, 50),
+}
+
+-- ===== สร้าง Row =====
 local rowCount = 0
 local allData = {}
 
 local function createRow(category, name, value, order)
-	rowCount = rowCount + 1
-	local row = Instance.new("Frame")
-	row.Name = "Row_" .. rowCount
-	row.Size = UDim2.new(1, 0, 0, 36)
-	row.BackgroundColor3 = rowCount % 2 == 0 and Color3.fromRGB(18, 18, 30) or Color3.fromRGB(22, 22, 38)
-	row.BorderSizePixel = 0
-	row.LayoutOrder = order or rowCount
-	row.Parent = scrollFrame
+    rowCount = rowCount + 1
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 36)
+    row.BackgroundColor3 = rowCount % 2 == 0
+        and Color3.fromRGB(18, 18, 30)
+        or  Color3.fromRGB(24, 24, 40)
+    row.BorderSizePixel = 0
+    row.LayoutOrder = order or rowCount
+    row.Parent = scrollFrame
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
-	local rowCorner = Instance.new("UICorner")
-	rowCorner.CornerRadius = UDim.new(0, 6)
-	rowCorner.Parent = row
+    local badge = Instance.new("TextLabel")
+    badge.Size = UDim2.new(0, 72, 0, 20)
+    badge.Position = UDim2.new(0, 4, 0.5, -10)
+    badge.BackgroundColor3 = badgeColors[category] or Color3.fromRGB(60, 60, 100)
+    badge.Text = category
+    badge.TextColor3 = Color3.fromRGB(220, 240, 255)
+    badge.TextSize = 9
+    badge.Font = Enum.Font.GothamBold
+    badge.TextTruncate = Enum.TextTruncate.AtEnd
+    badge.Parent = row
+    Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 4)
 
-	-- Category badge
-	local badge = Instance.new("TextLabel")
-	badge.Size = UDim2.new(0, 70, 0, 20)
-	badge.Position = UDim2.new(0, 4, 0.5, -10)
-	badge.BackgroundColor3 = Color3.fromRGB(0, 120, 160)
-	badge.Text = category
-	badge.TextColor3 = Color3.fromRGB(200, 240, 255)
-	badge.TextSize = 9
-	badge.Font = Enum.Font.GothamBold
-	badge.Parent = row
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0, 130, 1, 0)
+    nameLabel.Position = UDim2.new(0, 80, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = name
+    nameLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
+    nameLabel.TextSize = 11
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    nameLabel.Parent = row
 
-	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 4)
-	badgeCorner.Parent = badge
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 110, 1, 0)
+    valLabel.Position = UDim2.new(0, 214, 0, 0)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Text = tostring(value)
+    valLabel.TextColor3 = Color3.fromRGB(0, 220, 180)
+    valLabel.TextSize = 11
+    valLabel.Font = Enum.Font.GothamBold
+    valLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    valLabel.Parent = row
 
-	-- Name
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(0, 140, 1, 0)
-	nameLabel.Position = UDim2.new(0, 78, 0, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = name
-	nameLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
-	nameLabel.TextSize = 11
-	nameLabel.Font = Enum.Font.Gotham
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	nameLabel.Parent = row
+    -- Copy Button (ใช้ pcall ครอบ setclipboard เผื่อรันใน Studio)
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Size = UDim2.new(0, 44, 0, 22)
+    copyBtn.Position = UDim2.new(1, -50, 0.5, -11)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 90)
+    copyBtn.Text = "Copy"
+    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    copyBtn.TextSize = 10
+    copyBtn.Font = Enum.Font.GothamBold
+    copyBtn.BorderSizePixel = 0
+    copyBtn.Parent = row
+    Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 5)
 
-	-- Value
-	local valLabel = Instance.new("TextLabel")
-	valLabel.Size = UDim2.new(0, 100, 1, 0)
-	valLabel.Position = UDim2.new(0, 220, 0, 0)
-	valLabel.BackgroundTransparency = 1
-	valLabel.Text = tostring(value)
-	valLabel.TextColor3 = Color3.fromRGB(0, 220, 180)
-	valLabel.TextSize = 11
-	valLabel.Font = Enum.Font.GothamBold
-	valLabel.TextXAlignment = Enum.TextXAlignment.Left
-	valLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	valLabel.Parent = row
+    copyBtn.MouseButton1Click:Connect(function()
+        local text = "[" .. category .. "] " .. name .. ": " .. tostring(value)
+        pcall(function() setclipboard(text) end) -- ไม่ crash ใน Studio
+        copyBtn.Text = "✓"
+        copyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        task.delay(1.5, function()
+            if copyBtn and copyBtn.Parent then
+                copyBtn.Text = "Copy"
+                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 90)
+            end
+        end)
+    end)
 
-	-- Copy Button
-	local copyBtn = Instance.new("TextButton")
-	copyBtn.Size = UDim2.new(0, 44, 0, 22)
-	copyBtn.Position = UDim2.new(1, -50, 0.5, -11)
-	copyBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 100)
-	copyBtn.Text = "Copy"
-	copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	copyBtn.TextSize = 10
-	copyBtn.Font = Enum.Font.GothamBold
-	copyBtn.BorderSizePixel = 0
-	copyBtn.Parent = row
-
-	local copyCorner = Instance.new("UICorner")
-	copyCorner.CornerRadius = UDim.new(0, 5)
-	copyCorner.Parent = copyBtn
-
-	copyBtn.MouseButton1Click:Connect(function()
-		local textToCopy = "[" .. category .. "] " .. name .. ": " .. tostring(value)
-		setclipboard(textToCopy)
-		copyBtn.Text = "✓"
-		copyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 120)
-		task.delay(1.5, function()
-			copyBtn.Text = "Copy"
-			copyBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 100)
-		end)
-	end)
-
-	table.insert(allData, {category = category, name = name, value = value})
-
-	-- อัปเดต canvas
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 12)
-
-	return row
-end
-
--- ===== ฟังก์ชันนับ descendants =====
-local function countDescendants(instance, className)
-	local count = 0
-	for _, v in pairs(instance:GetDescendants()) do
-		if v:IsA(className) then count = count + 1 end
-	end
-	return count
-end
-
--- ===== ข้อมูลที่จะสแกน =====
-local scanTasks = {}
-
-local function addTask(fn) table.insert(scanTasks, fn) end
-
--- [1] Server Info
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: Server Info..."
-	createRow("SERVER", "PlaceId", game.PlaceId)
-	createRow("SERVER", "GameId", game.GameId)
-	createRow("SERVER", "JobId", game.JobId ~= "" and game.JobId:sub(1, 16) .. "..." or "N/A")
-	createRow("SERVER", "PlaceVersion", game.PlaceVersion)
-	createRow("SERVER", "CreatorType", tostring(game.CreatorType))
-	createRow("SERVER", "CreatorId", game.CreatorId)
-end)
-
--- [2] Players
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: Players..."
-	local playerList = Players:GetPlayers()
-	createRow("PLAYERS", "TotalPlayers", #playerList)
-	createRow("PLAYERS", "MaxPlayers", Players.MaxPlayers)
-	createRow("PLAYERS", "PreferredPlayers", Players.PreferredPlayers)
-	for i, p in ipairs(playerList) do
-		createRow("PLAYER", p.Name, "Ping: " .. tostring(p:GetNetworkPing and math.round(p:GetNetworkPing() * 1000) or "N/A") .. "ms")
-	end
-end)
-
--- [3] Workspace / World
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: Workspace..."
-	createRow("WORKSPACE", "Gravity", Workspace.Gravity)
-	createRow("WORKSPACE", "StreamingEnabled", tostring(Workspace.StreamingEnabled))
-	createRow("WORKSPACE", "FilteringEnabled", tostring(Workspace.FilteringEnabled))
-	createRow("WORKSPACE", "TotalParts", countDescendants(Workspace, "BasePart"))
-	createRow("WORKSPACE", "TotalModels", countDescendants(Workspace, "Model"))
-	createRow("WORKSPACE", "TotalScripts", countDescendants(Workspace, "LocalScript"))
-	createRow("WORKSPACE", "TotalSounds", countDescendants(Workspace, "Sound"))
-	createRow("WORKSPACE", "TotalAnimations", countDescendants(Workspace, "Animation"))
-	createRow("WORKSPACE", "TotalSpecialMesh", countDescendants(Workspace, "SpecialMesh"))
-	createRow("WORKSPACE", "TotalDecals", countDescendants(Workspace, "Decal"))
-	createRow("WORKSPACE", "TotalTextures", countDescendants(Workspace, "Texture"))
-	createRow("WORKSPACE", "TotalBillboardGui", countDescendants(Workspace, "BillboardGui"))
-	createRow("WORKSPACE", "TotalSurfaceGui", countDescendants(Workspace, "SurfaceGui"))
-end)
-
--- [4] Lighting
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: Lighting..."
-	createRow("LIGHTING", "Brightness", Lighting.Brightness)
-	createRow("LIGHTING", "ClockTime", math.floor(Lighting.ClockTime * 100) / 100)
-	createRow("LIGHTING", "FogEnd", Lighting.FogEnd)
-	createRow("LIGHTING", "FogStart", Lighting.FogStart)
-	createRow("LIGHTING", "GlobalShadows", tostring(Lighting.GlobalShadows))
-	createRow("LIGHTING", "Ambient", tostring(Lighting.Ambient))
-	createRow("LIGHTING", "OutdoorAmbient", tostring(Lighting.OutdoorAmbient))
-	createRow("LIGHTING", "Effects", #Lighting:GetChildren())
-end)
-
--- [5] Performance Stats
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: Performance..."
-	createRow("PERF", "Heartbeat (fps)", math.floor(1 / RunService.Heartbeat:Wait() * 10) / 10)
-	local statsInst = Stats
-	if statsInst then
-		createRow("PERF", "DataReceiveKbps", math.floor(statsInst.DataReceiveKbps))
-		createRow("PERF", "DataSendKbps", math.floor(statsInst.DataSendKbps))
-		createRow("PERF", "HeartbeatTimeMs", math.floor(statsInst.HeartbeatTimeMs * 100) / 100)
-		createRow("PERF", "PhysicsReceiveKbps", math.floor(statsInst.PhysicsReceiveKbps))
-		createRow("PERF", "PhysicsSendKbps", math.floor(statsInst.PhysicsSendKbps))
-		createRow("PERF", "InstanceCount", statsInst.InstanceCount)
-		createRow("PERF", "MovingPrimitivesCount", statsInst.MovingPrimitivesCount)
-		createRow("PERF", "PrimitivesCount", statsInst.PrimitivesCount)
-		createRow("PERF", "ContactsCount", statsInst.ContactsCount)
-	end
-end)
-
--- [6] ReplicatedStorage
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: ReplicatedStorage..."
-	createRow("REPLICATED", "TotalChildren", #ReplicatedStorage:GetChildren())
-	createRow("REPLICATED", "TotalDescendants", #ReplicatedStorage:GetDescendants())
-	createRow("REPLICATED", "RemoteEvents", countDescendants(ReplicatedStorage, "RemoteEvent"))
-	createRow("REPLICATED", "RemoteFunctions", countDescendants(ReplicatedStorage, "RemoteFunction"))
-	createRow("REPLICATED", "ModuleScripts", countDescendants(ReplicatedStorage, "ModuleScript"))
-	createRow("REPLICATED", "BindableEvents", countDescendants(ReplicatedStorage, "BindableEvent"))
-	createRow("REPLICATED", "ValueObjects", countDescendants(ReplicatedStorage, "StringValue") + countDescendants(ReplicatedStorage, "IntValue") + countDescendants(ReplicatedStorage, "BoolValue"))
-end)
-
--- [7] SoundService
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: SoundService..."
-	createRow("SOUND", "AmbientReverb", tostring(SoundService.AmbientReverb))
-	createRow("SOUND", "DistanceFactor", SoundService.DistanceFactor)
-	createRow("SOUND", "DopplerScale", SoundService.DopplerScale)
-	createRow("SOUND", "RolloffScale", SoundService.RolloffScale)
-	createRow("SOUND", "TotalSounds", countDescendants(game, "Sound"))
-end)
-
--- [8] StarterGui / StarterPack
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: StarterGui / StarterPack..."
-	local sg = game:GetService("StarterGui")
-	local sp = game:GetService("StarterPack")
-	createRow("STARTERGUI", "ResetPlayerGuiOnSpawn", tostring(sg.ResetPlayerGuiOnSpawn))
-	createRow("STARTERGUI", "ScreenGuis", countDescendants(sg, "ScreenGui"))
-	createRow("STARTERGUI", "LocalScripts", countDescendants(sg, "LocalScript"))
-	createRow("STARTERPACK", "Tools", #sp:GetChildren())
-end)
-
--- [9] LocalPlayer Info
-addTask(function()
-	statusLabel.Text = "กำลังสแกน: LocalPlayer..."
-	createRow("LOCALPLAYER", "Name", player.Name)
-	createRow("LOCALPLAYER", "DisplayName", player.DisplayName)
-	createRow("LOCALPLAYER", "UserId", player.UserId)
-	createRow("LOCALPLAYER", "AccountAge", player.AccountAge .. " วัน")
-	createRow("LOCALPLAYER", "MembershipType", tostring(player.MembershipType))
-	createRow("LOCALPLAYER", "TeamColor", tostring(player.TeamColor))
-	createRow("LOCALPLAYER", "CameraMode", tostring(player.CameraMode))
-	createRow("LOCALPLAYER", "DevComputerMovementMode", tostring(player.DevComputerMovementMode))
-	local char = player.Character
-	if char then
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChild("Humanoid")
-		if hrp then
-			createRow("CHARACTER", "Position", string.format("%.1f, %.1f, %.1f", hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
-		end
-		if hum then
-			createRow("CHARACTER", "Health", math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth))
-			createRow("CHARACTER", "WalkSpeed", hum.WalkSpeed)
-			createRow("CHARACTER", "JumpPower", hum.JumpPower)
-			createRow("CHARACTER", "FloorMaterial", tostring(hum.FloorMaterial))
-		end
-	end
-end)
-
--- ===== Toggle & Scan Logic =====
-local isOn = false
-local scanning = false
-
-local function animateToggle(on)
-	local targetX = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-	local targetColor = on and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(60, 60, 80)
-	local knobColor = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 200)
-	TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = targetX, BackgroundColor3 = knobColor}):Play()
-	TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-end
-
-local function clearResults()
-	for _, v in pairs(scrollFrame:GetChildren()) do
-		if v:IsA("Frame") then v:Destroy() end
-	end
-	rowCount = 0
-	allData = {}
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-end
-
-local function runScan()
-	if scanning then return end
-	scanning = true
-	clearResults()
-	progressFill.Size = UDim2.new(0, 0, 1, 0)
-	progressLabel.Text = "0%"
-
-	local total = #scanTasks
-	for i, task_ in ipairs(scanTasks) do
-		task_()
-		local pct = math.floor((i / total) * 100)
-		local tween = TweenService:Create(progressFill, TweenInfo.new(0.15), {
-			Size = UDim2.new(pct / 100, 0, 1, 0)
-		})
-		tween:Play()
-		progressLabel.Text = pct .. "%"
-		task.wait(0.25)
-	end
-
-	progressLabel.Text = "100%"
-	statusLabel.Text = "✓ สแกนเสร็จสิ้น — พบข้อมูลทั้งหมด " .. #allData .. " รายการ"
-	scanning = false
-end
-
-toggleButton.MouseButton1Click:Connect(function()
-	isOn = not isOn
-	animateToggle(isOn)
-	if isOn then
-		task.spawn(runScan)
-	else
-		statusLabel.Text = "ปิดการสแกน"
-		progressFill.Size = UDim2.new(0, 0, 1, 0)
-		progressLabel.Text = "0%"
-		clearResults()
-	end
-end)
+    table.insert(allData, {category = category, name = name, value = value}
