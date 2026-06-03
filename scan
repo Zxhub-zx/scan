@@ -1,4 +1,5 @@
--- Server Scanner GUI — executor-safe version (UI Redesign)
+cat > /mnt/user-data/outputs/ServerScanner_v2.lua << 'ENDOFFILE'
+-- Server Scanner GUI v2 — Deep Scan + Copy All
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
@@ -8,6 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local NetworkClient
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -41,7 +45,6 @@ screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
 -- ===== Responsive Size =====
--- คำนวณขนาด GUI ให้พอดีทั้ง PC และมือถือ
 local vp = workspace.CurrentCamera.ViewportSize
 local guiW = math.clamp(math.floor(vp.X * 0.38), 300, 420)
 local guiH = math.clamp(math.floor(vp.Y * 0.72), 380, 560)
@@ -58,17 +61,15 @@ mainFrame.Parent = screenGui
 addCorner(mainFrame, 14)
 addStroke(mainFrame, Color3.fromRGB(0, 180, 255), 1.5)
 
--- Subtle inner glow gradient
 local topGlow = Instance.new("Frame")
 topGlow.Size = UDim2.new(1, 0, 0, 3)
-topGlow.Position = UDim2.new(0, 0, 0, 0)
 topGlow.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
 topGlow.BackgroundTransparency = 0.5
 topGlow.BorderSizePixel = 0
 topGlow.ZIndex = 5
 topGlow.Parent = mainFrame
 
--- ===== Mini Circle (collapsed state) =====
+-- ===== Mini Circle =====
 local miniCircle = Instance.new("Frame")
 miniCircle.Name = "MiniCircle"
 miniCircle.Size = UDim2.new(0, 52, 0, 52)
@@ -80,7 +81,6 @@ miniCircle.Parent = screenGui
 addCorner(miniCircle, 26)
 addStroke(miniCircle, Color3.fromRGB(0, 200, 255), 2)
 
--- วงกลมชั้นใน (สีฟ้า)
 local miniInner = Instance.new("Frame")
 miniInner.Size = UDim2.new(0, 34, 0, 34)
 miniInner.Position = UDim2.new(0.5, -17, 0.5, -17)
@@ -96,7 +96,6 @@ miniIcon.Text = "⬡"
 miniIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 miniIcon.TextSize = 16
 miniIcon.Font = Enum.Font.GothamBold
-miniIcon.TextXAlignment = Enum.TextXAlignment.Center
 miniIcon.Parent = miniInner
 
 local miniBtn = Instance.new("TextButton")
@@ -110,14 +109,12 @@ miniBtn.Parent = miniCircle
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 44)
-titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundColor3 = Color3.fromRGB(0, 120, 170)
 titleBar.BorderSizePixel = 0
 titleBar.ZIndex = 2
 titleBar.Parent = mainFrame
 addCorner(titleBar, 14)
 
--- ปิดมุมล่าง titleBar
 local titleFix = Instance.new("Frame")
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
@@ -126,7 +123,6 @@ titleFix.BorderSizePixel = 0
 titleFix.ZIndex = 2
 titleFix.Parent = titleBar
 
--- Title gradient overlay
 local titleGrad = Instance.new("UIGradient")
 titleGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 160, 210)),
@@ -214,14 +210,12 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
 addCorner(progressFill, 7)
 
--- shimmer effect on progressFill
 local shimmer = Instance.new("Frame")
 shimmer.Size = UDim2.new(0, 40, 1, 0)
 shimmer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 shimmer.BackgroundTransparency = 0.7
 shimmer.BorderSizePixel = 0
 shimmer.ZIndex = 2
-shimmer.ClipsDescendants = false
 shimmer.Parent = progressFill
 addCorner(shimmer, 7)
 
@@ -248,8 +242,9 @@ statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = mainFrame
 
 -- ===== ScrollFrame =====
+-- ลดความสูง scroll เพื่อเว้นที่ให้ Copy All bar ด้านล่าง
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -12, 1, -90)
+scrollFrame.Size = UDim2.new(1, -12, 1, -134)
 scrollFrame.Position = UDim2.new(0, 6, 0, 86)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
 scrollFrame.BorderSizePixel = 0
@@ -272,6 +267,41 @@ listPad.PaddingTop = UDim.new(0, 5)
 listPad.PaddingBottom = UDim.new(0, 5)
 listPad.Parent = scrollFrame
 
+-- ===== Copy All Bar (ด้านล่าง, ซ่อนก่อน) =====
+local copyAllBar = Instance.new("Frame")
+copyAllBar.Size = UDim2.new(1, -12, 0, 38)
+copyAllBar.Position = UDim2.new(0, 6, 1, -44)
+copyAllBar.BackgroundColor3 = Color3.fromRGB(12, 14, 26)
+copyAllBar.BorderSizePixel = 0
+copyAllBar.Visible = false
+copyAllBar.Parent = mainFrame
+addCorner(copyAllBar, 8)
+addStroke(copyAllBar, Color3.fromRGB(0, 160, 220), 1)
+
+local copyAllBtn = Instance.new("TextButton")
+copyAllBtn.Size = UDim2.new(0.48, 0, 0.72, 0)
+copyAllBtn.Position = UDim2.new(0.01, 0, 0.14, 0)
+copyAllBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 200)
+copyAllBtn.Text = "📋  Copy All Results"
+copyAllBtn.TextColor3 = Color3.fromRGB(230, 250, 255)
+copyAllBtn.TextSize = 10
+copyAllBtn.Font = Enum.Font.GothamBold
+copyAllBtn.BorderSizePixel = 0
+copyAllBtn.Parent = copyAllBar
+addCorner(copyAllBtn, 6)
+
+local copyJsonBtn = Instance.new("TextButton")
+copyJsonBtn.Size = UDim2.new(0.48, 0, 0.72, 0)
+copyJsonBtn.Position = UDim2.new(0.51, 0, 0.14, 0)
+copyJsonBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 60)
+copyJsonBtn.Text = "{ }  Copy as JSON"
+copyJsonBtn.TextColor3 = Color3.fromRGB(180, 255, 200)
+copyJsonBtn.TextSize = 10
+copyJsonBtn.Font = Enum.Font.GothamBold
+copyJsonBtn.BorderSizePixel = 0
+copyJsonBtn.Parent = copyAllBar
+addCorner(copyJsonBtn, 6)
+
 -- ===== Drag Logic (mainFrame) =====
 local dragging, dragStart, startPos = false, nil, nil
 local dragDeadzone = 4
@@ -284,30 +314,26 @@ titleBar.InputBegan:Connect(function(input)
         startPos = mainFrame.Position
     end
 end)
-
 titleBar.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
     end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
         or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         if delta.Magnitude < dragDeadzone then return end
-        local smoothDelta = delta * 0.85 -- ลาก smooth ขึ้นเล็กน้อย
+        local s = delta * 0.85
         mainFrame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + smoothDelta.X,
-            startPos.Y.Scale, startPos.Y.Offset + smoothDelta.Y
-        )
+            startPos.X.Scale, startPos.X.Offset + s.X,
+            startPos.Y.Scale, startPos.Y.Offset + s.Y)
     end
 end)
 
 -- ===== Drag Logic (miniCircle) =====
 local miniDragging, miniDragStart, miniStartPos = false, nil, nil
-
 miniCircle.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
@@ -316,42 +342,35 @@ miniCircle.InputBegan:Connect(function(input)
         miniStartPos = miniCircle.Position
     end
 end)
-
 miniCircle.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
         miniDragging = false
     end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
     if miniDragging and (input.UserInputType == Enum.UserInputType.MouseMovement
         or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - miniDragStart
-        local smooth = delta * 0.85
+        local s = delta * 0.85
         miniCircle.Position = UDim2.new(
-            miniStartPos.X.Scale, miniStartPos.X.Offset + smooth.X,
-            miniStartPos.Y.Scale, miniStartPos.Y.Offset + smooth.Y
-        )
+            miniStartPos.X.Scale, miniStartPos.X.Offset + s.X,
+            miniStartPos.Y.Scale, miniStartPos.Y.Offset + s.Y)
     end
 end)
 
 -- ===== Minimize / Restore =====
 local isMinimized = false
-
 local function setMinimized(state)
     isMinimized = state
     if state then
-        -- บันทึกตำแหน่ง mainFrame เพื่อ sync miniCircle
         local absPos = mainFrame.AbsolutePosition
         mainFrame.Visible = false
         miniCircle.Position = UDim2.new(0, absPos.X, 0, absPos.Y)
         miniCircle.Visible = true
-        -- pulse animation บน miniCircle
         TweenService:Create(miniInner, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
             {BackgroundColor3 = Color3.fromRGB(0, 220, 255)}):Play()
     else
-        -- restore: sync mainFrame position ไป miniCircle
         local absPos = miniCircle.AbsolutePosition
         mainFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y)
         miniCircle.Visible = false
@@ -360,15 +379,8 @@ local function setMinimized(state)
             {Size = UDim2.new(0, guiW, 0, guiH)}):Play()
     end
 end
-
-minBtn.MouseButton1Click:Connect(function()
-    setMinimized(true)
-end)
-
-miniBtn.MouseButton1Click:Connect(function()
-    -- ตรวจว่าลากหรือกด
-    setMinimized(false)
-end)
+minBtn.MouseButton1Click:Connect(function() setMinimized(true) end)
+miniBtn.MouseButton1Click:Connect(function() setMinimized(false) end)
 
 -- ===== Badge Colors =====
 local badgeColors = {
@@ -384,6 +396,11 @@ local badgeColors = {
     STARTERPACK = Color3.fromRGB(0, 110, 60),
     LOCALPLAYER = Color3.fromRGB(160, 80, 0),
     CHARACTER   = Color3.fromRGB(140, 50, 50),
+    NETWORK     = Color3.fromRGB(0, 80, 160),
+    CAMERA      = Color3.fromRGB(80, 0, 140),
+    TEAM        = Color3.fromRGB(0, 120, 120),
+    REMOTE      = Color3.fromRGB(160, 40, 80),
+    GAMECONFIG  = Color3.fromRGB(100, 100, 0),
     ERROR       = Color3.fromRGB(200, 30, 30),
 }
 
@@ -397,15 +414,12 @@ local function createRow(category, name, value, order)
 
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, 0, 0, 32)
-    row.BackgroundColor3 = isEven
-        and Color3.fromRGB(16, 18, 30)
-        or  Color3.fromRGB(20, 22, 36)
+    row.BackgroundColor3 = isEven and Color3.fromRGB(16, 18, 30) or Color3.fromRGB(20, 22, 36)
     row.BorderSizePixel = 0
     row.LayoutOrder = order or rowCount
     row.Parent = scrollFrame
     addCorner(row, 6)
 
-    -- subtle left accent line
     local accent = Instance.new("Frame")
     accent.Size = UDim2.new(0, 2, 0.6, 0)
     accent.Position = UDim2.new(0, 0, 0.2, 0)
@@ -451,45 +465,72 @@ local function createRow(category, name, value, order)
     valLabel.TextTruncate = Enum.TextTruncate.AtEnd
     valLabel.Parent = row
 
-    local copyBtn = Instance.new("TextButton")
-    copyBtn.Size = UDim2.new(0, 38, 0, 20)
-    copyBtn.Position = UDim2.new(1, -44, 0.5, -10)
-    copyBtn.BackgroundColor3 = Color3.fromRGB(0, 130, 80)
-    copyBtn.Text = "Copy"
-    copyBtn.TextColor3 = Color3.fromRGB(220, 255, 240)
-    copyBtn.TextSize = 9
-    copyBtn.Font = Enum.Font.GothamBold
-    copyBtn.BorderSizePixel = 0
-    copyBtn.Parent = row
-    addCorner(copyBtn, 5)
-
-    copyBtn.MouseButton1Click:Connect(function()
-        local text = "[" .. category .. "] " .. name .. ": " .. tostring(value)
-        pcall(function() setclipboard(text) end)
-        copyBtn.Text = "✓"
-        copyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        task.delay(1.5, function()
-            if copyBtn and copyBtn.Parent then
-                copyBtn.Text = "Copy"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 130, 80)
-            end
-        end)
-    end)
-
-    table.insert(allData, {category = category, name = name, value = value})
+    table.insert(allData, {category = category, name = name, value = tostring(value)})
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
 end
 
+-- ===== Copy All Logic =====
+copyAllBtn.MouseButton1Click:Connect(function()
+    if #allData == 0 then return end
+    local lines = {"=== SERVER SCANNER REPORT ===", "Scanned: " .. os.date and os.date() or "N/A", ""}
+    local lastCat = ""
+    for _, d in ipairs(allData) do
+        if d.category ~= lastCat then
+            table.insert(lines, "--- " .. d.category .. " ---")
+            lastCat = d.category
+        end
+        table.insert(lines, string.format("  %-20s %s", d.name .. ":", d.value))
+    end
+    table.insert(lines, "")
+    table.insert(lines, "Total: " .. #allData .. " items")
+    local text = table.concat(lines, "\n")
+    pcall(function() setclipboard(text) end)
+    copyAllBtn.Text = "✓  Copied!"
+    copyAllBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    task.delay(2, function()
+        if copyAllBtn and copyAllBtn.Parent then
+            copyAllBtn.Text = "📋  Copy All Results"
+            copyAllBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 200)
+        end
+    end)
+end)
+
+copyJsonBtn.MouseButton1Click:Connect(function()
+    if #allData == 0 then return end
+    -- สร้าง JSON แบบง่าย (ไม่ใช้ HttpService เพราะ encode อาจ error บาง executor)
+    local parts = {}
+    for _, d in ipairs(allData) do
+        local val = d.value:gsub('"', '\\"')
+        local cat = d.category:gsub('"', '\\"')
+        local nm  = d.name:gsub('"', '\\"')
+        table.insert(parts, string.format('{"cat":"%s","key":"%s","val":"%s"}', cat, nm, val))
+    end
+    local json = "[" .. table.concat(parts, ",") .. "]"
+    pcall(function() setclipboard(json) end)
+    copyJsonBtn.Text = "✓  Copied JSON!"
+    copyJsonBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 80)
+    task.delay(2, function()
+        if copyJsonBtn and copyJsonBtn.Parent then
+            copyJsonBtn.Text = "{ }  Copy as JSON"
+            copyJsonBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 60)
+        end
+    end)
+end)
+
 -- ===== Helpers =====
+local function safe(fn, fallback)
+    local ok, v = pcall(fn)
+    return ok and v or (fallback or "N/A")
+end
+
 local function countDesc(instance, className)
-    local ok, result = pcall(function()
+    return safe(function()
         local n = 0
         for _, v in ipairs(instance:GetDescendants()) do
             if v:IsA(className) then n = n + 1 end
         end
         return n
-    end)
-    return ok and result or 0
+    end, 0)
 end
 
 local function getStat(key)
@@ -500,139 +541,319 @@ local function getStat(key)
     return "N/A"
 end
 
+local function fmtNum(n)
+    if type(n) ~= "number" then return tostring(n) end
+    return string.format("%.2f", n)
+end
+
 -- ===== Scan Tasks =====
 local scanTasks = {}
 local function addTask(fn) table.insert(scanTasks, fn) end
 
+-- ── SERVER ──────────────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: Server Info..."
-    createRow("SERVER", "PlaceId", game.PlaceId)
-    createRow("SERVER", "GameId", game.GameId)
+    createRow("SERVER", "PlaceId",        game.PlaceId)
+    createRow("SERVER", "GameId",         game.GameId)
     local jobId = game.JobId
-    createRow("SERVER", "JobId", jobId ~= "" and jobId:sub(1, 16) .. "..." or "N/A")
-    createRow("SERVER", "PlaceVersion", game.PlaceVersion)
-    createRow("SERVER", "CreatorType", tostring(game.CreatorType))
-    createRow("SERVER", "CreatorId", game.CreatorId)
+    createRow("SERVER", "JobId",          jobId ~= "" and jobId or "N/A")
+    createRow("SERVER", "PlaceVersion",   game.PlaceVersion)
+    createRow("SERVER", "CreatorType",    tostring(game.CreatorType))
+    createRow("SERVER", "CreatorId",      game.CreatorId)
+    createRow("SERVER", "PrivateServer",  tostring(safe(function() return game.PrivateServerId ~= "" end, false)))
+    createRow("SERVER", "VIPServerId",    safe(function() return game.PrivateServerId ~= "" and game.PrivateServerId:sub(1,12).."..." or "None" end))
+    -- ดึงชื่อเกมผ่าน MarketplaceService
+    local info = safe(function()
+        return MarketplaceService:GetProductInfo(game.PlaceId, Enum.InfoType.Asset)
+    end)
+    if type(info) == "table" then
+        createRow("SERVER", "PlaceName",  tostring(info.Name or "N/A"))
+        createRow("SERVER", "Creator",    tostring(info.Creator and info.Creator.Name or "N/A"))
+    end
+    createRow("GAMECONFIG", "HttpEnabled", tostring(safe(function() return game:GetService("HttpService").HttpEnabled end, false)))
+    createRow("GAMECONFIG", "StudioMode",  tostring(RunService:IsStudio()))
+    createRow("GAMECONFIG", "IsServer",    tostring(RunService:IsServer()))
+    createRow("GAMECONFIG", "IsClient",    tostring(RunService:IsClient()))
+    createRow("GAMECONFIG", "IsRunMode",   tostring(RunService:IsRunMode()))
 end)
 
+-- ── NETWORK ─────────────────────────────────────────────────────────
+addTask(function()
+    statusLabel.Text = "กำลังสแกน: Network..."
+    createRow("NETWORK", "DataReceiveKbps",   getStat("DataReceiveKbps"))
+    createRow("NETWORK", "DataSendKbps",      getStat("DataSendKbps"))
+    createRow("NETWORK", "PhysicsRecvKbps",   getStat("PhysicsReceiveKbps"))
+    createRow("NETWORK", "PhysicsSendKbps",   getStat("PhysicsSendKbps"))
+    -- ค่า ping ของ LocalPlayer
+    local myPing = safe(function()
+        return tostring(math.round(player:GetNetworkPing() * 1000)) .. "ms"
+    end, "N/A")
+    createRow("NETWORK", "MyPing",            myPing)
+    -- นับ RemoteEvent/Function ทั้งเกม
+    createRow("NETWORK", "TotalRemoteEvents",   countDesc(game, "RemoteEvent"))
+    createRow("NETWORK", "TotalRemoteFuncs",    countDesc(game, "RemoteFunction"))
+    createRow("NETWORK", "TotalBindableEvents", countDesc(game, "BindableEvent"))
+    createRow("NETWORK", "TotalBindableFuncs",  countDesc(game, "BindableFunction"))
+end)
+
+-- ── PLAYERS ─────────────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: Players..."
     local list = Players:GetPlayers()
-    createRow("PLAYERS", "TotalPlayers", #list)
-    createRow("PLAYERS", "MaxPlayers", Players.MaxPlayers)
+    createRow("PLAYERS", "TotalPlayers",     #list)
+    createRow("PLAYERS", "MaxPlayers",       Players.MaxPlayers)
     createRow("PLAYERS", "PreferredPlayers", Players.PreferredPlayers)
+    createRow("PLAYERS", "BanService",       tostring(safe(function() return Players.BanningEnabled end, false)))
     for _, p in ipairs(list) do
-        local ping = "N/A"
-        pcall(function()
-            ping = tostring(math.round(p:GetNetworkPing() * 1000)) .. "ms"
-        end)
-        createRow("PLAYER", p.Name, "Ping: " .. ping)
+        local ping = safe(function()
+            return tostring(math.round(p:GetNetworkPing() * 1000)) .. "ms"
+        end, "N/A")
+        local age    = safe(function() return p.AccountAge .. "d" end, "?")
+        local member = safe(function() return tostring(p.MembershipType) end, "?")
+        local team   = safe(function() return tostring(p.TeamColor) end, "?")
+        createRow("PLAYER", p.Name, "Ping:" .. ping .. " Age:" .. age .. " " .. member)
+        createRow("PLAYER", p.Name .. ".Team",   team)
+        createRow("PLAYER", p.Name .. ".UserId", safe(function() return p.UserId end, "?"))
     end
 end)
 
+-- ── WORKSPACE ───────────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: Workspace..."
-    createRow("WORKSPACE", "Gravity", Workspace.Gravity)
-    createRow("WORKSPACE", "StreamingEnabled", tostring(Workspace.StreamingEnabled))
-    createRow("WORKSPACE", "FilteringEnabled", tostring(Workspace.FilteringEnabled))
-    createRow("WORKSPACE", "TotalParts", countDesc(Workspace, "BasePart"))
-    createRow("WORKSPACE", "TotalModels", countDesc(Workspace, "Model"))
-    createRow("WORKSPACE", "TotalScripts", countDesc(Workspace, "LocalScript"))
-    createRow("WORKSPACE", "TotalSounds", countDesc(Workspace, "Sound"))
-    createRow("WORKSPACE", "TotalAnimations", countDesc(Workspace, "Animation"))
-    createRow("WORKSPACE", "TotalDecals", countDesc(Workspace, "Decal"))
-    createRow("WORKSPACE", "TotalTextures", countDesc(Workspace, "Texture"))
-    createRow("WORKSPACE", "TotalBillboardGui", countDesc(Workspace, "BillboardGui"))
-    createRow("WORKSPACE", "TotalSurfaceGui", countDesc(Workspace, "SurfaceGui"))
+    createRow("WORKSPACE", "Gravity",            Workspace.Gravity)
+    createRow("WORKSPACE", "StreamingEnabled",   tostring(Workspace.StreamingEnabled))
+    createRow("WORKSPACE", "FilteringEnabled",   tostring(Workspace.FilteringEnabled))
+    createRow("WORKSPACE", "AirDensity",         safe(function() return Workspace.AirDensity end, "N/A"))
+    createRow("WORKSPACE", "GlobalWind",         tostring(safe(function() return Workspace.GlobalWind end, "N/A")))
+    createRow("WORKSPACE", "TotalParts",         countDesc(Workspace, "BasePart"))
+    createRow("WORKSPACE", "TotalModels",        countDesc(Workspace, "Model"))
+    createRow("WORKSPACE", "TotalLocalScripts",  countDesc(Workspace, "LocalScript"))
+    createRow("WORKSPACE", "TotalScripts",       countDesc(Workspace, "Script"))
+    createRow("WORKSPACE", "TotalModuleScripts", countDesc(Workspace, "ModuleScript"))
+    createRow("WORKSPACE", "TotalSounds",        countDesc(Workspace, "Sound"))
+    createRow("WORKSPACE", "TotalAnimations",    countDesc(Workspace, "Animation"))
+    createRow("WORKSPACE", "TotalDecals",        countDesc(Workspace, "Decal"))
+    createRow("WORKSPACE", "TotalTextures",      countDesc(Workspace, "Texture"))
+    createRow("WORKSPACE", "TotalBillboardGui",  countDesc(Workspace, "BillboardGui"))
+    createRow("WORKSPACE", "TotalSurfaceGui",    countDesc(Workspace, "SurfaceGui"))
+    createRow("WORKSPACE", "TotalNPCs",          countDesc(Workspace, "Humanoid"))
+    createRow("WORKSPACE", "TotalTools",         countDesc(Workspace, "Tool"))
+    createRow("WORKSPACE", "TotalConstraints",   countDesc(Workspace, "Constraint"))
+    createRow("WORKSPACE", "TotalWeldJoints",    countDesc(Workspace, "WeldConstraint"))
+    createRow("WORKSPACE", "TotalParticles",     countDesc(Workspace, "ParticleEmitter"))
+    createRow("WORKSPACE", "TotalBeams",         countDesc(Workspace, "Beam"))
+    createRow("WORKSPACE", "TotalTrails",        countDesc(Workspace, "Trail"))
+    createRow("WORKSPACE", "TotalClickDetectors",countDesc(Workspace, "ClickDetector"))
+    createRow("WORKSPACE", "TotalProximPrompts", countDesc(Workspace, "ProximityPrompt"))
+    createRow("WORKSPACE", "TotalValues",
+        countDesc(Workspace,"StringValue") + countDesc(Workspace,"IntValue")
+        + countDesc(Workspace,"BoolValue") + countDesc(Workspace,"NumberValue"))
 end)
 
+-- ── LIGHTING ────────────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: Lighting..."
-    createRow("LIGHTING", "Brightness", Lighting.Brightness)
-    createRow("LIGHTING", "ClockTime", math.floor(Lighting.ClockTime * 100) / 100)
-    createRow("LIGHTING", "FogEnd", Lighting.FogEnd)
-    createRow("LIGHTING", "FogStart", Lighting.FogStart)
-    createRow("LIGHTING", "GlobalShadows", tostring(Lighting.GlobalShadows))
-    createRow("LIGHTING", "Ambient", tostring(Lighting.Ambient))
-    createRow("LIGHTING", "OutdoorAmbient", tostring(Lighting.OutdoorAmbient))
-    createRow("LIGHTING", "Effects", #Lighting:GetChildren())
+    createRow("LIGHTING", "Technology",      tostring(safe(function() return Lighting.Technology end)))
+    createRow("LIGHTING", "Brightness",      Lighting.Brightness)
+    createRow("LIGHTING", "Exposure",        safe(function() return fmtNum(Lighting.ExposureCompensation) end))
+    createRow("LIGHTING", "ClockTime",       math.floor(Lighting.ClockTime * 100) / 100)
+    createRow("LIGHTING", "TimeOfDay",       tostring(safe(function() return Lighting.TimeOfDay end)))
+    createRow("LIGHTING", "FogEnd",          Lighting.FogEnd)
+    createRow("LIGHTING", "FogStart",        Lighting.FogStart)
+    createRow("LIGHTING", "FogColor",        tostring(Lighting.FogColor))
+    createRow("LIGHTING", "GlobalShadows",   tostring(Lighting.GlobalShadows))
+    createRow("LIGHTING", "Ambient",         tostring(Lighting.Ambient))
+    createRow("LIGHTING", "OutdoorAmbient",  tostring(Lighting.OutdoorAmbient))
+    createRow("LIGHTING", "ColorShift_Top",  tostring(safe(function() return Lighting.ColorShift_Top end)))
+    createRow("LIGHTING", "ColorShift_Bot",  tostring(safe(function() return Lighting.ColorShift_Bottom end)))
+    -- effect instances
+    for _, eff in ipairs(Lighting:GetChildren()) do
+        createRow("LIGHTING", "Effect:" .. eff.ClassName, eff.Name)
+    end
 end)
 
+-- ── PERFORMANCE ─────────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: Performance..."
-    local t0 = tick()
-    RunService.Heartbeat:Wait()
-    local fps = math.floor(1 / math.max(tick() - t0, 0.001) * 10) / 10
-    createRow("PERF", "Heartbeat FPS", fps)
-    createRow("PERF", "DataReceiveKbps", getStat("DataReceiveKbps"))
-    createRow("PERF", "DataSendKbps", getStat("DataSendKbps"))
-    createRow("PERF", "HeartbeatTimeMs", getStat("HeartbeatTimeMs"))
-    createRow("PERF", "PhysicsReceiveKbps", getStat("PhysicsReceiveKbps"))
-    createRow("PERF", "PhysicsSendKbps", getStat("PhysicsSendKbps"))
-    createRow("PERF", "InstanceCount", getStat("InstanceCount"))
-    createRow("PERF", "MovingPrimitives", getStat("MovingPrimitivesCount"))
-    createRow("PERF", "PrimitivesCount", getStat("PrimitivesCount"))
+    -- FPS measurement (3 frames avg)
+    local fpsSum = 0
+    for i = 1, 3 do
+        local t0 = tick()
+        RunService.Heartbeat:Wait()
+        fpsSum = fpsSum + 1 / math.max(tick() - t0, 0.001)
+    end
+    local fps = math.floor((fpsSum / 3) * 10) / 10
+    createRow("PERF", "Heartbeat FPS (avg3)", fps)
+    createRow("PERF", "HeartbeatTimeMs",      getStat("HeartbeatTimeMs"))
+    createRow("PERF", "InstanceCount",        getStat("InstanceCount"))
+    createRow("PERF", "MovingPrimitives",     getStat("MovingPrimitivesCount"))
+    createRow("PERF", "PrimitivesCount",      getStat("PrimitivesCount"))
+    createRow("PERF", "ContactsCount",        getStat("ContactsCount"))
+    -- memory
+    createRow("PERF", "TotalMemoryMB",        safe(function() return fmtNum(Stats:GetTotalMemoryUsageMb()) end))
+    createRow("PERF", "Mem:PlaceScripts",     safe(function() return fmtNum(Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.Script)) end))
+    createRow("PERF", "Mem:Instances",        safe(function() return fmtNum(Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.Instances)) end))
+    createRow("PERF", "Mem:Sounds",           safe(function() return fmtNum(Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.Sounds)) end))
+    createRow("PERF", "Mem:Textures",         safe(function() return fmtNum(Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.GraphicsMeshParts)) end))
+    createRow("PERF", "Mem:HttpCache",        safe(function() return fmtNum(Stats:GetMemoryUsageMbForTag(Enum.DeveloperMemoryTag.HttpCache)) end))
 end)
 
+-- ── REPLICATED STORAGE ──────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: ReplicatedStorage..."
-    createRow("REPLICATED", "TotalChildren", #ReplicatedStorage:GetChildren())
+    createRow("REPLICATED", "TotalChildren",    #ReplicatedStorage:GetChildren())
     createRow("REPLICATED", "TotalDescendants", #ReplicatedStorage:GetDescendants())
-    createRow("REPLICATED", "RemoteEvents", countDesc(ReplicatedStorage, "RemoteEvent"))
-    createRow("REPLICATED", "RemoteFunctions", countDesc(ReplicatedStorage, "RemoteFunction"))
-    createRow("REPLICATED", "ModuleScripts", countDesc(ReplicatedStorage, "ModuleScript"))
-    createRow("REPLICATED", "BindableEvents", countDesc(ReplicatedStorage, "BindableEvent"))
+    createRow("REPLICATED", "RemoteEvents",     countDesc(ReplicatedStorage, "RemoteEvent"))
+    createRow("REPLICATED", "RemoteFunctions",  countDesc(ReplicatedStorage, "RemoteFunction"))
+    createRow("REPLICATED", "ModuleScripts",    countDesc(ReplicatedStorage, "ModuleScript"))
+    createRow("REPLICATED", "BindableEvents",   countDesc(ReplicatedStorage, "BindableEvent"))
+    createRow("REPLICATED", "Folders",          countDesc(ReplicatedStorage, "Folder"))
     createRow("REPLICATED", "ValueObjects",
-        countDesc(ReplicatedStorage, "StringValue")
-        + countDesc(ReplicatedStorage, "IntValue")
-        + countDesc(ReplicatedStorage, "BoolValue"))
+        countDesc(ReplicatedStorage,"StringValue")
+        + countDesc(ReplicatedStorage,"IntValue")
+        + countDesc(ReplicatedStorage,"BoolValue")
+        + countDesc(ReplicatedStorage,"NumberValue"))
+    -- แสดงชื่อ RemoteEvents ทั้งหมด
+    for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            createRow("REMOTE", "RemoteEvent", v:GetFullName())
+        elseif v:IsA("RemoteFunction") then
+            createRow("REMOTE", "RemoteFunc",  v:GetFullName())
+        end
+    end
 end)
 
+-- ── SOUND SERVICE ───────────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: SoundService..."
-    createRow("SOUND", "AmbientReverb", tostring(SoundService.AmbientReverb))
-    createRow("SOUND", "DistanceFactor", SoundService.DistanceFactor)
-    createRow("SOUND", "DopplerScale", SoundService.DopplerScale)
-    createRow("SOUND", "RolloffScale", SoundService.RolloffScale)
-    createRow("SOUND", "TotalSounds", countDesc(game, "Sound"))
+    createRow("SOUND", "AmbientReverb",   tostring(SoundService.AmbientReverb))
+    createRow("SOUND", "DistanceFactor",  SoundService.DistanceFactor)
+    createRow("SOUND", "DopplerScale",    SoundService.DopplerScale)
+    createRow("SOUND", "RolloffScale",    SoundService.RolloffScale)
+    createRow("SOUND", "TotalSounds",     countDesc(game, "Sound"))
+    createRow("SOUND", "PlayingSounds",   safe(function()
+        local n = 0
+        for _, s in ipairs(game:GetDescendants()) do
+            if s:IsA("Sound") and s.IsPlaying then n = n + 1 end
+        end
+        return n
+    end, 0))
 end)
 
+-- ── STARTER GUI / PACK ──────────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: StarterGui / StarterPack..."
     local sg = game:GetService("StarterGui")
     local sp = game:GetService("StarterPack")
-    createRow("STARTERGUI", "ResetOnSpawn", tostring(sg.ResetPlayerGuiOnSpawn))
-    createRow("STARTERGUI", "ScreenGuis", countDesc(sg, "ScreenGui"))
-    createRow("STARTERGUI", "LocalScripts", countDesc(sg, "LocalScript"))
-    createRow("STARTERPACK", "Tools", #sp:GetChildren())
+    createRow("STARTERGUI", "ResetOnSpawn",   tostring(sg.ResetPlayerGuiOnSpawn))
+    createRow("STARTERGUI", "VREnabled",      tostring(safe(function() return sg.VirtualCursorMode end)))
+    createRow("STARTERGUI", "ScreenGuis",     countDesc(sg, "ScreenGui"))
+    createRow("STARTERGUI", "LocalScripts",   countDesc(sg, "LocalScript"))
+    createRow("STARTERGUI", "Frames",         countDesc(sg, "Frame"))
+    createRow("STARTERPACK", "Tools",         #sp:GetChildren())
+    for _, t in ipairs(sp:GetChildren()) do
+        createRow("STARTERPACK", "Tool", t.Name)
+    end
 end)
 
+-- ── CAMERA ──────────────────────────────────────────────────────────
+addTask(function()
+    statusLabel.Text = "กำลังสแกน: Camera..."
+    local cam = workspace.CurrentCamera
+    createRow("CAMERA", "CameraType",    tostring(safe(function() return cam.CameraType end)))
+    createRow("CAMERA", "FieldOfView",   safe(function() return fmtNum(cam.FieldOfView) end))
+    createRow("CAMERA", "NearPlane",     safe(function() return fmtNum(cam.NearPlaneZ) end))
+    createRow("CAMERA", "ViewportSize",  safe(function() return cam.ViewportSize.X .. "x" .. cam.ViewportSize.Y end))
+    createRow("CAMERA", "Focus",         safe(function()
+        local f = cam.Focus.Position
+        return string.format("%.1f, %.1f, %.1f", f.X, f.Y, f.Z)
+    end))
+    createRow("CAMERA", "HeadLocked",   tostring(safe(function() return cam.HeadLocked end)))
+    createRow("CAMERA", "DiagonalFOV",  safe(function() return fmtNum(cam.DiagonalFieldOfView) end))
+end)
+
+-- ── TEAMS ────────────────────────────────────────────────────────────
+addTask(function()
+    statusLabel.Text = "กำลังสแกน: Teams..."
+    local teamsService = safe(function() return game:GetService("Teams") end)
+    if teamsService then
+        local teams = teamsService:GetTeams()
+        createRow("TEAM", "TotalTeams", #teams)
+        for _, t in ipairs(teams) do
+            local members = 0
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Team == t then members = members + 1 end
+            end
+            createRow("TEAM", t.Name, "Color:" .. tostring(t.TeamColor) .. " Players:" .. members)
+        end
+    else
+        createRow("TEAM", "Teams", "N/A")
+    end
+end)
+
+-- ── LOCAL PLAYER & CHARACTER ─────────────────────────────────────────
 addTask(function()
     statusLabel.Text = "กำลังสแกน: LocalPlayer..."
-    createRow("LOCALPLAYER", "Name", player.Name)
-    createRow("LOCALPLAYER", "DisplayName", player.DisplayName)
-    createRow("LOCALPLAYER", "UserId", player.UserId)
-    createRow("LOCALPLAYER", "AccountAge", player.AccountAge .. " days")
+    createRow("LOCALPLAYER", "Name",           player.Name)
+    createRow("LOCALPLAYER", "DisplayName",    player.DisplayName)
+    createRow("LOCALPLAYER", "UserId",         player.UserId)
+    createRow("LOCALPLAYER", "AccountAge",     player.AccountAge .. " days")
     createRow("LOCALPLAYER", "MembershipType", tostring(player.MembershipType))
-    createRow("LOCALPLAYER", "TeamColor", tostring(player.TeamColor))
-    createRow("LOCALPLAYER", "CameraMode", tostring(player.CameraMode))
-    createRow("LOCALPLAYER", "DevMoveMode", tostring(player.DevComputerMovementMode))
+    createRow("LOCALPLAYER", "TeamColor",      tostring(player.TeamColor))
+    createRow("LOCALPLAYER", "CameraMode",     tostring(player.CameraMode))
+    createRow("LOCALPLAYER", "DevMoveMode",    tostring(player.DevComputerMovementMode))
+    createRow("LOCALPLAYER", "AutoJump",       tostring(safe(function() return player.AutoJumpEnabled end)))
+    createRow("LOCALPLAYER", "RespawnTime",    safe(function() return fmtNum(Players.RespawnTime) end))
+    createRow("LOCALPLAYER", "CharacterAdded", tostring(player.Character ~= nil))
+    -- followers/friends (pcall เพราะบาง executor บล็อก)
+    createRow("LOCALPLAYER", "FollowCount",    safe(function() return player:GetRankInGroup(0) end, "N/A"))
 
     local char = player.Character
     if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
+        local root= char:FindFirstChild("HumanoidRootPart")
         if hrp then
             createRow("CHARACTER", "Position",
+                string.format("%.1f, %.1f, %.1f", hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
+            createRow("CHARACTER", "Velocity",
                 string.format("%.1f, %.1f, %.1f",
-                    hrp.Position.X, hrp.Position.Y, hrp.Position.Z))
+                    safe(function() return hrp.AssemblyLinearVelocity.X end,0),
+                    safe(function() return hrp.AssemblyLinearVelocity.Y end,0),
+                    safe(function() return hrp.AssemblyLinearVelocity.Z end,0)))
         end
         if hum then
-            createRow("CHARACTER", "Health",
-                math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth))
-            createRow("CHARACTER", "WalkSpeed", hum.WalkSpeed)
-            createRow("CHARACTER", "JumpPower", hum.JumpPower)
+            createRow("CHARACTER", "Health",        math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth))
+            createRow("CHARACTER", "WalkSpeed",     hum.WalkSpeed)
+            createRow("CHARACTER", "JumpPower",     hum.JumpPower)
+            createRow("CHARACTER", "JumpHeight",    safe(function() return fmtNum(hum.JumpHeight) end))
+            createRow("CHARACTER", "HipHeight",     safe(function() return fmtNum(hum.HipHeight) end))
             createRow("CHARACTER", "FloorMaterial", tostring(hum.FloorMaterial))
+            createRow("CHARACTER", "MoveDir",       tostring(safe(function()
+                local m = hum.MoveDirection
+                return string.format("%.2f,%.2f,%.2f", m.X, m.Y, m.Z)
+            end)))
+            createRow("CHARACTER", "RigType",       tostring(safe(function() return hum.RigType end)))
+            createRow("CHARACTER", "NameDisplay",   tostring(safe(function() return hum.DisplayDistanceType end)))
+        end
+        -- นับชิ้นส่วน
+        createRow("CHARACTER", "TotalParts",    countDesc(char, "BasePart"))
+        createRow("CHARACTER", "TotalScripts",  countDesc(char, "LocalScript") + countDesc(char, "Script"))
+        createRow("CHARACTER", "TotalAccessory",countDesc(char, "Accessory"))
+        createRow("CHARACTER", "TotalAnimTrack",countDesc(char, "Animation"))
+        -- PlayerGui stats
+        local pGui = player:FindFirstChild("PlayerGui")
+        if pGui then
+            createRow("CHARACTER", "PlayerGui.ScreenGuis", countDesc(pGui, "ScreenGui"))
+            createRow("CHARACTER", "PlayerGui.Frames",     countDesc(pGui, "Frame"))
+        end
+        -- Backpack/tools
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+            createRow("CHARACTER", "BackpackTools", #bp:GetChildren())
+            for _, t in ipairs(bp:GetChildren()) do
+                createRow("CHARACTER", "Tool:" .. t.Name, t.ClassName)
+            end
         end
     end
 end)
@@ -656,12 +877,14 @@ local function clearResults()
     rowCount = 0
     allData = {}
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    copyAllBar.Visible = false
 end
 
 local function runScan()
     if scanning then return end
     scanning = true
     clearResults()
+    copyAllBar.Visible = false
     progressFill.Size = UDim2.new(0, 0, 1, 0)
     progressLabel.Text = "0%"
 
@@ -669,7 +892,7 @@ local function runScan()
     for i, fn in ipairs(scanTasks) do
         local ok, err = pcall(fn)
         if not ok then
-            createRow("ERROR", "Task " .. i, tostring(err):sub(1, 50))
+            createRow("ERROR", "Task " .. i, tostring(err):sub(1, 60))
         end
         local pct = math.floor((i / total) * 100)
         TweenService:Create(progressFill, TweenInfo.new(0.15), {
@@ -682,6 +905,10 @@ local function runScan()
     progressLabel.Text = "100%"
     statusLabel.Text = "✓ สแกนเสร็จ — พบ " .. #allData .. " รายการ"
     scanning = false
+    -- แสดง Copy All bar
+    copyAllBar.Visible = true
+    TweenService:Create(copyAllBar, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        {BackgroundTransparency = 0}):Play()
 end
 
 toggleButton.MouseButton1Click:Connect(function()
@@ -697,3 +924,5 @@ toggleButton.MouseButton1Click:Connect(function()
         clearResults()
     end
 end)
+ENDOFFILE
+echo "done"
