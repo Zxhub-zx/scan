@@ -1,4 +1,4 @@
--- Server Scanner GUI — executor-safe version
+-- Server Scanner GUI — executor-safe version (UI Redesign)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
@@ -12,7 +12,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Helper: สร้าง UICorner แบบ executor-safe
 local function addCorner(parent, radius)
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, radius or 8)
@@ -20,145 +19,262 @@ local function addCorner(parent, radius)
     return c
 end
 
--- ===== ScreenGui =====
--- ลบ GUI เก่าก่อน (executor รัน script ซ้ำได้)
+local function addStroke(parent, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(0, 200, 255)
+    s.Thickness = thickness or 1.2
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = parent
+    return s
+end
+
+-- ลบ GUI เก่า
 local old = playerGui:FindFirstChild("ServerScanner")
 if old then old:Destroy() end
 
+-- ===== ScreenGui =====
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ServerScanner"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
+
+-- ===== Responsive Size =====
+-- คำนวณขนาด GUI ให้พอดีทั้ง PC และมือถือ
+local vp = workspace.CurrentCamera.ViewportSize
+local guiW = math.clamp(math.floor(vp.X * 0.38), 300, 420)
+local guiH = math.clamp(math.floor(vp.Y * 0.72), 380, 560)
 
 -- ===== Main Frame =====
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 430, 0, 570)
-mainFrame.Position = UDim2.new(0.5, -215, 0.5, -285)
-mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+mainFrame.Size = UDim2.new(0, guiW, 0, guiH)
+mainFrame.Position = UDim2.new(1, -(guiW + 16), 0, 60)
+mainFrame.BackgroundColor3 = Color3.fromRGB(8, 10, 20)
 mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
-addCorner(mainFrame, 12)
+addCorner(mainFrame, 14)
+addStroke(mainFrame, Color3.fromRGB(0, 180, 255), 1.5)
 
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(0, 200, 255)
-stroke.Thickness = 1.5
-stroke.Parent = mainFrame
+-- Subtle inner glow gradient
+local topGlow = Instance.new("Frame")
+topGlow.Size = UDim2.new(1, 0, 0, 3)
+topGlow.Position = UDim2.new(0, 0, 0, 0)
+topGlow.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+topGlow.BackgroundTransparency = 0.5
+topGlow.BorderSizePixel = 0
+topGlow.ZIndex = 5
+topGlow.Parent = mainFrame
+
+-- ===== Mini Circle (collapsed state) =====
+local miniCircle = Instance.new("Frame")
+miniCircle.Name = "MiniCircle"
+miniCircle.Size = UDim2.new(0, 52, 0, 52)
+miniCircle.Position = UDim2.new(1, -(52 + 16), 0, 60)
+miniCircle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+miniCircle.BorderSizePixel = 0
+miniCircle.Visible = false
+miniCircle.Parent = screenGui
+addCorner(miniCircle, 26)
+addStroke(miniCircle, Color3.fromRGB(0, 200, 255), 2)
+
+-- วงกลมชั้นใน (สีฟ้า)
+local miniInner = Instance.new("Frame")
+miniInner.Size = UDim2.new(0, 34, 0, 34)
+miniInner.Position = UDim2.new(0.5, -17, 0.5, -17)
+miniInner.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+miniInner.BorderSizePixel = 0
+miniInner.Parent = miniCircle
+addCorner(miniInner, 17)
+
+local miniIcon = Instance.new("TextLabel")
+miniIcon.Size = UDim2.new(1, 0, 1, 0)
+miniIcon.BackgroundTransparency = 1
+miniIcon.Text = "⬡"
+miniIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+miniIcon.TextSize = 16
+miniIcon.Font = Enum.Font.GothamBold
+miniIcon.TextXAlignment = Enum.TextXAlignment.Center
+miniIcon.Parent = miniInner
+
+local miniBtn = Instance.new("TextButton")
+miniBtn.Size = UDim2.new(1, 0, 1, 0)
+miniBtn.BackgroundTransparency = 1
+miniBtn.Text = ""
+miniBtn.ZIndex = 10
+miniBtn.Parent = miniCircle
 
 -- ===== Title Bar =====
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 46)
-titleBar.BackgroundColor3 = Color3.fromRGB(0, 140, 190)
+titleBar.Size = UDim2.new(1, 0, 0, 44)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(0, 120, 170)
 titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 2
 titleBar.Parent = mainFrame
-addCorner(titleBar, 12)
+addCorner(titleBar, 14)
 
 -- ปิดมุมล่าง titleBar
 local titleFix = Instance.new("Frame")
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
-titleFix.BackgroundColor3 = Color3.fromRGB(0, 140, 190)
+titleFix.BackgroundColor3 = Color3.fromRGB(0, 120, 170)
 titleFix.BorderSizePixel = 0
+titleFix.ZIndex = 2
 titleFix.Parent = titleBar
+
+-- Title gradient overlay
+local titleGrad = Instance.new("UIGradient")
+titleGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 160, 210)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 90, 140)),
+})
+titleGrad.Rotation = 90
+titleGrad.Parent = titleBar
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Text = "⬡  SERVER SCANNER"
-titleLabel.Size = UDim2.new(1, -60, 1, 0)
-titleLabel.Position = UDim2.new(0, 14, 0, 0)
+titleLabel.Size = UDim2.new(1, -110, 1, 0)
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextSize = 15
+titleLabel.TextColor3 = Color3.fromRGB(230, 248, 255)
+titleLabel.TextSize = 13
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.ZIndex = 3
 titleLabel.Parent = titleBar
 
 -- ===== Toggle Switch =====
 local toggleBg = Instance.new("Frame")
-toggleBg.Size = UDim2.new(0, 50, 0, 26)
-toggleBg.Position = UDim2.new(1, -62, 0.5, -13)
-toggleBg.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+toggleBg.Size = UDim2.new(0, 44, 0, 22)
+toggleBg.Position = UDim2.new(1, -94, 0.5, -11)
+toggleBg.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 toggleBg.BorderSizePixel = 0
+toggleBg.ZIndex = 3
 toggleBg.Parent = titleBar
-addCorner(toggleBg, 13)
+addCorner(toggleBg, 11)
+addStroke(toggleBg, Color3.fromRGB(80, 80, 110), 1)
 
 local toggleKnob = Instance.new("Frame")
-toggleKnob.Size = UDim2.new(0, 20, 0, 20)
-toggleKnob.Position = UDim2.new(0, 3, 0.5, -10)
-toggleKnob.BackgroundColor3 = Color3.fromRGB(180, 180, 200)
+toggleKnob.Size = UDim2.new(0, 16, 0, 16)
+toggleKnob.Position = UDim2.new(0, 3, 0.5, -8)
+toggleKnob.BackgroundColor3 = Color3.fromRGB(160, 170, 190)
 toggleKnob.BorderSizePixel = 0
+toggleKnob.ZIndex = 4
 toggleKnob.Parent = toggleBg
-addCorner(toggleKnob, 10)
+addCorner(toggleKnob, 8)
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(1, 0, 1, 0)
 toggleButton.BackgroundTransparency = 1
 toggleButton.Text = ""
+toggleButton.ZIndex = 5
 toggleButton.Parent = toggleBg
+
+-- ===== Minimize Button =====
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 26, 0, 26)
+minBtn.Position = UDim2.new(1, -38, 0.5, -13)
+minBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+minBtn.Text = "–"
+minBtn.TextColor3 = Color3.fromRGB(180, 220, 255)
+minBtn.TextSize = 14
+minBtn.Font = Enum.Font.GothamBold
+minBtn.BorderSizePixel = 0
+minBtn.ZIndex = 6
+minBtn.Parent = titleBar
+addCorner(minBtn, 8)
+addStroke(minBtn, Color3.fromRGB(0, 150, 200), 1)
+
+-- ===== Divider =====
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -16, 0, 1)
+divider.Position = UDim2.new(0, 8, 0, 44)
+divider.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+divider.BackgroundTransparency = 0.6
+divider.BorderSizePixel = 0
+divider.Parent = mainFrame
 
 -- ===== Progress Bar =====
 local progressBg = Instance.new("Frame")
-progressBg.Size = UDim2.new(1, -20, 0, 18)
-progressBg.Position = UDim2.new(0, 10, 0, 52)
-progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+progressBg.Size = UDim2.new(1, -16, 0, 14)
+progressBg.Position = UDim2.new(0, 8, 0, 50)
+progressBg.BackgroundColor3 = Color3.fromRGB(20, 22, 38)
 progressBg.BorderSizePixel = 0
 progressBg.Parent = mainFrame
-addCorner(progressBg, 9)
+addCorner(progressBg, 7)
 
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(0, 0, 1, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBg
-addCorner(progressFill, 9)
+addCorner(progressFill, 7)
+
+-- shimmer effect on progressFill
+local shimmer = Instance.new("Frame")
+shimmer.Size = UDim2.new(0, 40, 1, 0)
+shimmer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+shimmer.BackgroundTransparency = 0.7
+shimmer.BorderSizePixel = 0
+shimmer.ZIndex = 2
+shimmer.ClipsDescendants = false
+shimmer.Parent = progressFill
+addCorner(shimmer, 7)
 
 local progressLabel = Instance.new("TextLabel")
 progressLabel.Size = UDim2.new(1, 0, 1, 0)
 progressLabel.BackgroundTransparency = 1
 progressLabel.Text = "0%"
-progressLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-progressLabel.TextSize = 11
+progressLabel.TextColor3 = Color3.fromRGB(220, 240, 255)
+progressLabel.TextSize = 10
 progressLabel.Font = Enum.Font.GothamBold
+progressLabel.ZIndex = 3
 progressLabel.Parent = progressBg
 
 -- ===== Status Label =====
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 0, 18)
-statusLabel.Position = UDim2.new(0, 10, 0, 74)
+statusLabel.Size = UDim2.new(1, -16, 0, 14)
+statusLabel.Position = UDim2.new(0, 8, 0, 68)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text = "รอการสแกน..."
-statusLabel.TextColor3 = Color3.fromRGB(120, 200, 255)
-statusLabel.TextSize = 11
+statusLabel.TextColor3 = Color3.fromRGB(100, 190, 240)
+statusLabel.TextSize = 10
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = mainFrame
 
 -- ===== ScrollFrame =====
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -16, 1, -102)
-scrollFrame.Position = UDim2.new(0, 8, 0, 98)
-scrollFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 24)
+scrollFrame.Size = UDim2.new(1, -12, 1, -90)
+scrollFrame.Position = UDim2.new(0, 6, 0, 86)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
 scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 4
-scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 255)
+scrollFrame.ScrollBarThickness = 3
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 255)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
 scrollFrame.Parent = mainFrame
 addCorner(scrollFrame, 8)
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 4)
+listLayout.Padding = UDim.new(0, 3)
 listLayout.Parent = scrollFrame
 
 local listPad = Instance.new("UIPadding")
-listPad.PaddingLeft = UDim.new(0, 6)
-listPad.PaddingRight = UDim.new(0, 6)
-listPad.PaddingTop = UDim.new(0, 6)
+listPad.PaddingLeft = UDim.new(0, 5)
+listPad.PaddingRight = UDim.new(0, 5)
+listPad.PaddingTop = UDim.new(0, 5)
+listPad.PaddingBottom = UDim.new(0, 5)
 listPad.Parent = scrollFrame
 
--- ===== Drag Logic =====
+-- ===== Drag Logic (mainFrame) =====
 local dragging, dragStart, startPos = false, nil, nil
+local dragDeadzone = 4
 
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -180,11 +296,78 @@ UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
         or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
+        if delta.Magnitude < dragDeadzone then return end
+        local smoothDelta = delta * 0.85 -- ลาก smooth ขึ้นเล็กน้อย
         mainFrame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            startPos.X.Scale, startPos.X.Offset + smoothDelta.X,
+            startPos.Y.Scale, startPos.Y.Offset + smoothDelta.Y
         )
     end
+end)
+
+-- ===== Drag Logic (miniCircle) =====
+local miniDragging, miniDragStart, miniStartPos = false, nil, nil
+
+miniCircle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        miniDragging = true
+        miniDragStart = input.Position
+        miniStartPos = miniCircle.Position
+    end
+end)
+
+miniCircle.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        miniDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if miniDragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - miniDragStart
+        local smooth = delta * 0.85
+        miniCircle.Position = UDim2.new(
+            miniStartPos.X.Scale, miniStartPos.X.Offset + smooth.X,
+            miniStartPos.Y.Scale, miniStartPos.Y.Offset + smooth.Y
+        )
+    end
+end)
+
+-- ===== Minimize / Restore =====
+local isMinimized = false
+
+local function setMinimized(state)
+    isMinimized = state
+    if state then
+        -- บันทึกตำแหน่ง mainFrame เพื่อ sync miniCircle
+        local absPos = mainFrame.AbsolutePosition
+        mainFrame.Visible = false
+        miniCircle.Position = UDim2.new(0, absPos.X, 0, absPos.Y)
+        miniCircle.Visible = true
+        -- pulse animation บน miniCircle
+        TweenService:Create(miniInner, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            {BackgroundColor3 = Color3.fromRGB(0, 220, 255)}):Play()
+    else
+        -- restore: sync mainFrame position ไป miniCircle
+        local absPos = miniCircle.AbsolutePosition
+        mainFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y)
+        miniCircle.Visible = false
+        mainFrame.Visible = true
+        TweenService:Create(mainFrame, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size = UDim2.new(0, guiW, 0, guiH)}):Play()
+    end
+end
+
+minBtn.MouseButton1Click:Connect(function()
+    setMinimized(true)
+end)
+
+miniBtn.MouseButton1Click:Connect(function()
+    -- ตรวจว่าลากหรือกด
+    setMinimized(false)
 end)
 
 -- ===== Badge Colors =====
@@ -210,59 +393,71 @@ local allData = {}
 
 local function createRow(category, name, value, order)
     rowCount = rowCount + 1
+    local isEven = rowCount % 2 == 0
+
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 36)
-    row.BackgroundColor3 = rowCount % 2 == 0
-        and Color3.fromRGB(18, 18, 30)
-        or  Color3.fromRGB(24, 24, 40)
+    row.Size = UDim2.new(1, 0, 0, 32)
+    row.BackgroundColor3 = isEven
+        and Color3.fromRGB(16, 18, 30)
+        or  Color3.fromRGB(20, 22, 36)
     row.BorderSizePixel = 0
     row.LayoutOrder = order or rowCount
     row.Parent = scrollFrame
     addCorner(row, 6)
 
+    -- subtle left accent line
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(0, 2, 0.6, 0)
+    accent.Position = UDim2.new(0, 0, 0.2, 0)
+    accent.BackgroundColor3 = badgeColors[category] or Color3.fromRGB(60, 60, 100)
+    accent.BorderSizePixel = 0
+    accent.Parent = row
+    addCorner(accent, 2)
+
     local badge = Instance.new("TextLabel")
-    badge.Size = UDim2.new(0, 72, 0, 20)
-    badge.Position = UDim2.new(0, 4, 0.5, -10)
+    badge.Size = UDim2.new(0, 66, 0, 18)
+    badge.Position = UDim2.new(0, 6, 0.5, -9)
     badge.BackgroundColor3 = badgeColors[category] or Color3.fromRGB(60, 60, 100)
     badge.Text = category
-    badge.TextColor3 = Color3.fromRGB(220, 240, 255)
-    badge.TextSize = 9
+    badge.TextColor3 = Color3.fromRGB(230, 245, 255)
+    badge.TextSize = 8
     badge.Font = Enum.Font.GothamBold
     badge.TextTruncate = Enum.TextTruncate.AtEnd
+    badge.BackgroundTransparency = 0.15
     badge.Parent = row
     addCorner(badge, 4)
 
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0, 130, 1, 0)
-    nameLabel.Position = UDim2.new(0, 80, 0, 0)
+    nameLabel.Size = UDim2.new(0, 120, 1, 0)
+    nameLabel.Position = UDim2.new(0, 76, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = name
-    nameLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
-    nameLabel.TextSize = 11
+    nameLabel.TextColor3 = Color3.fromRGB(190, 210, 240)
+    nameLabel.TextSize = 10
     nameLabel.Font = Enum.Font.Gotham
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
     nameLabel.Parent = row
 
     local valLabel = Instance.new("TextLabel")
-    valLabel.Size = UDim2.new(0, 110, 1, 0)
-    valLabel.Position = UDim2.new(0, 214, 0, 0)
+    valLabel.Size = UDim2.new(0, 95, 1, 0)
+    valLabel.Position = UDim2.new(0, 200, 0, 0)
     valLabel.BackgroundTransparency = 1
     valLabel.Text = tostring(value)
     valLabel.TextColor3 = Color3.fromRGB(0, 220, 180)
-    valLabel.TextSize = 11
+    valLabel.TextSize = 10
     valLabel.Font = Enum.Font.GothamBold
     valLabel.TextXAlignment = Enum.TextXAlignment.Left
     valLabel.TextTruncate = Enum.TextTruncate.AtEnd
     valLabel.Parent = row
 
     local copyBtn = Instance.new("TextButton")
-    copyBtn.Size = UDim2.new(0, 44, 0, 22)
-    copyBtn.Position = UDim2.new(1, -50, 0.5, -11)
-    copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 90)
+    copyBtn.Size = UDim2.new(0, 38, 0, 20)
+    copyBtn.Position = UDim2.new(1, -44, 0.5, -10)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(0, 130, 80)
     copyBtn.Text = "Copy"
-    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    copyBtn.TextSize = 10
+    copyBtn.TextColor3 = Color3.fromRGB(220, 255, 240)
+    copyBtn.TextSize = 9
     copyBtn.Font = Enum.Font.GothamBold
     copyBtn.BorderSizePixel = 0
     copyBtn.Parent = row
@@ -276,13 +471,13 @@ local function createRow(category, name, value, order)
         task.delay(1.5, function()
             if copyBtn and copyBtn.Parent then
                 copyBtn.Text = "Copy"
-                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 90)
+                copyBtn.BackgroundColor3 = Color3.fromRGB(0, 130, 80)
             end
         end)
     end)
 
     table.insert(allData, {category = category, name = name, value = value})
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 12)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
 end
 
 -- ===== Helpers =====
@@ -447,9 +642,9 @@ local isOn = false
 local scanning = false
 
 local function animateToggle(on)
-    local targetPos = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-    local bgColor   = on and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(60, 60, 80)
-    local knobColor = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 200)
+    local targetPos = on and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+    local bgColor   = on and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(50, 50, 70)
+    local knobColor = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 170, 190)
     TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = targetPos, BackgroundColor3 = knobColor}):Play()
     TweenService:Create(toggleBg,   TweenInfo.new(0.2), {BackgroundColor3 = bgColor}):Play()
 end
